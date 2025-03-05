@@ -1,32 +1,36 @@
 package elastisearchProducts.controller;
 
-import co.elastic.clients.elasticsearch.core.SearchResponse;
-import elastisearchProducts.entity.Product;
-import elastisearchProducts.service.ElasticSearchService;
+import elastisearchProducts.entity.ProductMysql;
+import elastisearchProducts.repository.ProductMysqlRepository;
 import elastisearchProducts.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.IOException;
-import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/apis")
+@RequestMapping("/products")
 public class ProductController {
 
     @Autowired
     private ProductService service;
 
-    @GetMapping("/products")
-    public Iterable<Product> findAll(){
-        return service.getAllProducts();
+    @PostMapping("/save")
+    public ResponseEntity<ProductMysql> createProduct(@RequestBody ProductMysql productMysql){
+        ProductMysql savedProduct = service.productSave(productMysql);
+        return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
+    }
+/*
+    @PutMapping("/{id}/price")
+    public ResponseEntity<ProductMysql> priceUpdate(@PathVariable Integer id, @RequestBody Map<String, Double> request){
+        Double newPrice = request.get("price");
+        ProductMysql updateProduct = service.productUpdate(id, newPrice);
+        return ResponseEntity.ok(updateProduct);
     }
 
-    @PostMapping("/insert")
-    public Product insertProduct(@RequestBody Product product){
-        return service.insertProduct(product);
-    }
+ */
     /*
     @GetMapping("/matchAll")
     public String matchAll() throws IOException{
