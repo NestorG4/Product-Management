@@ -29,8 +29,8 @@ public class KafkaConsumer {
             throw new RuntimeException("Error processing message Kafka");
         }
     }
-/*
-    @KafkaListener(topics = "product-topic", groupId = "product-group")
+
+    @KafkaListener(topics = "product-update-topic", groupId = "product-group")
     public void consumeEventUpdate(String message) throws JsonProcessingException{
         System.out.println("📥 Message arrived in Kafka: " + message);
         ObjectMapper objectMapper = new ObjectMapper();
@@ -39,7 +39,6 @@ public class KafkaConsumer {
         String id = jsonNode.get("id").asText();
         Double price = jsonNode.get("price").asDouble();
 
-        //Search product in ElasticSearch and updated it
         Optional<ProductElasticsearch> productOptional = elasticsearchRepository.findById(id);
         if(productOptional.isPresent()){
             ProductElasticsearch product = productOptional.get();
@@ -47,14 +46,31 @@ public class KafkaConsumer {
             elasticsearchRepository.save(product);
             System.out.println("Product updated successfully");
         }else{
-            System.out.println("Product not found");
-            ProductElasticsearch newProduct = new ProductElasticsearch();
-            newProduct.setId(id);
-            newProduct.setPrice(price);
-            elasticsearchRepository.save(newProduct);
-            System.out.println("Product created in Elasticsearch" + newProduct);
+            throw new IllegalArgumentException("Product exists in Mysql but not in Elasticsearch");
         }
     }
 
- */
+    @KafkaListener(topics = "product-update-complete-topic", groupId = "product-group")
+    public void consumeEventUpdateComplete(String message) throws  JsonProcessingException{
+        try{
+            ProductElasticsearch productElasticsearch = objectMapper.readValue(message, ProductElasticsearch.class);
+            elasticsearchRepository.save(productElasticsearch);
+        }catch (JsonProcessingException e){
+            throw new RuntimeException("Error processing message kafka");
+        }
+
+    }
+
+    @KafkaListener(topics = "product-delete-topic", groupId = "product-group")
+    public void consumeEventDelete(String message) throws JsonProcessingException{
+        System.out.println("📥 Message arrived in Kafka: " + message);
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = objectMapper.readTree(message);
+        String id = jsonNode.get("id").asText();
+        if (elasticsearchRepository.existsById(id)) {
+            elasticsearchRepository.deleteById(id);
+        }else{
+            throw new IllegalArgumentException("Product to delete not found in Elasticsearch");
+        }
+    }
 }

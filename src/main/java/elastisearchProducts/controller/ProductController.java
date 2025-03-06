@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -17,33 +18,42 @@ public class ProductController {
     @Autowired
     private ProductService service;
 
+    @GetMapping("/list")
+    public ResponseEntity<List<ProductMysql>> listProducts(){
+        List<ProductMysql> listProducts =  service.listProducts();
+        return listProducts.isEmpty()
+                ? ResponseEntity.status(HttpStatus.NO_CONTENT).build()
+                : ResponseEntity.status(HttpStatus.OK).body(listProducts);
+    }
+
     @PostMapping("/save")
     public ResponseEntity<ProductMysql> createProduct(@RequestBody ProductMysql productMysql){
         ProductMysql savedProduct = service.productSave(productMysql);
         return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
     }
-/*
+
+    @GetMapping("/search/{id}")
+    public ResponseEntity<ProductMysql> findProduct(@PathVariable Integer id){
+        ProductMysql product = service.findByIdProduct(id);
+        return ResponseEntity.ok().body(product);
+    }
+
     @PutMapping("/{id}/price")
-    public ResponseEntity<ProductMysql> priceUpdate(@PathVariable Integer id, @RequestBody Map<String, Double> request){
+    public ResponseEntity<ProductMysql> updatePrice(@PathVariable Integer id, @RequestBody Map<String, Double> request){
         Double newPrice = request.get("price");
-        ProductMysql updateProduct = service.productUpdate(id, newPrice);
-        return ResponseEntity.ok(updateProduct);
+        ProductMysql updatedPrice = service.updatePrice(id, newPrice);
+        return ResponseEntity.ok(updatedPrice);
     }
 
- */
-    /*
-    @GetMapping("/matchAll")
-    public String matchAll() throws IOException{
-        SearchResponse<Map> searchResponse = elasticSearchService.matchAllServices();
-        System.out.println(searchResponse.hits().hits().toString());
-        return searchResponse.hits().hits().toString();
+    @PutMapping("/update/{id}")
+    public ResponseEntity<?> updateProduct (@PathVariable Integer id, @RequestBody ProductMysql productMysql){
+        service.updateProduct(id, productMysql);
+        return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/matchAllProducts")
-    public List<Product> matchAllProducts() throws IOException{
-        SearchResponse<Product> searchResponse = elasticSearchService.matchAllProductsServices(){
-            System.out.println(searchResponse.hits().hits().toString());
-        }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteProduct(@PathVariable Integer id){
+        service.deleteProduct(id);
+        return ResponseEntity.ok("Product deleted successfully");
     }
-     */
 }

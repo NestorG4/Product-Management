@@ -6,9 +6,12 @@ import elastisearchProducts.events.KafkaProducer;
 import elastisearchProducts.repository.ProductElasticsearchRepository;
 import elastisearchProducts.repository.ProductMysqlRepository;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Optional;
 
 @Service
@@ -18,49 +21,45 @@ public class ProductService {
     private ProductMysqlRepository productMysqlRepository;
 
     @Autowired
-    private ProductElasticsearchRepository productElasticsearchRepository;
-
-    @Autowired
     private KafkaProducer kafkaProducer;
+
+    public List<ProductMysql> listProducts(){
+        return productMysqlRepository.findAll(Sort.by(Sort.Direction.ASC, "id"));
+    }
 
     public ProductMysql productSave(ProductMysql productMysql){
         ProductMysql savedProduct = productMysqlRepository.save(productMysql);
         kafkaProducer.sendEventSave("product-topic", savedProduct);
         return savedProduct;
     }
-    /*
-    public ProductMysql productUpdate(Integer id, Double newPrice){
-        ProductMysql productMysql = productMysqlRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Product doesn't exist in MySQL "));
+
+    public ProductMysql findByIdProduct(Integer id){
+        return productMysqlRepository.findById(id)
+                .orElseThrow(()-> new EntityNotFoundException("Product doesn't exist in MySql"));
+    }
+
+    public ProductMysql updatePrice(Integer id, Double newPrice){
+        //Check if this works
+        ProductMysql productMysql = findByIdProduct(id);
         productMysql.setPrice(newPrice);
         productMysqlRepository.save(productMysql);
-
-        Optional<ProductElasticsearch> productElasticsearch = productElasticsearchRepository.findById(id.toString());
-        if(productElasticsearch.isPresent()){
-            ProductElasticsearch productToUpdate = productElasticsearch.get();
-            productToUpdate.setPrice(newPrice);
-            productElasticsearchRepository.save(productToUpdate);
-        }else{
-            throw new IllegalStateException("Product exist en MySQL but not in ElasticSearch");
-        }
+        kafkaProducer.sendEventUpdate("product-update-topic", id, newPrice);
         return productMysql;
+    }
 
-     */
-        /*
-        Optional<ProductMysql> productOpt = productMysqlRepository.findById(id);
-        if(productOpt.isEmpty()){
-            throw new RuntimeException("Product not found");
+    public void updateProduct(Integer id, ProductMysql updatedProduct){
+        ProductMysql existingProduct = findByIdProduct(id);
+        updatedProduct.setId(existingProduct.getId());
+        productMysqlRepository.save(updatedProduct);
+        kafkaProducer.sendEventUpdateComplete("product-update-complete-topic", id, updatedProduct);
+    }
+
+    public void deleteProduct(Integer id){
+        if (!productMysqlRepository.existsById(id)){
+            throw new EntityNotFoundException("Product doesn't exist in MySql");
         }
-        //Get product in Mysql and update this product
-        ProductMysql product = productOpt.get();
-        product.setPrice(newPrice);
-        productMysqlRepository.save(product);
+        productMysqlRepository.deleteById(id);
+        kafkaProducer.sendEventDelete("product-delete-topic", id);
+    }
 
-        //Send event to Kafka
-        String message = String.format("{\"id\":%d, \"price\":%.2f}", id, newPrice);
-        kafkaProducer.sendEventUpdate("product-topic", message);
-        return product;
-
-         */
-    //}
 }
