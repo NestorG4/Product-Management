@@ -5,7 +5,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import elastisearchProducts.entity.ProductElasticsearch;
 import elastisearchProducts.repository.ProductElasticsearchRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.elasticsearch.core.suggest.Completion;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -13,6 +16,8 @@ import java.util.Optional;
 
 @Component
 public class KafkaConsumer {
+
+    private static final Logger logger = LoggerFactory.getLogger(KafkaConsumer.class);
 
     @Autowired
     private ProductElasticsearchRepository elasticsearchRepository;
@@ -22,8 +27,15 @@ public class KafkaConsumer {
 
     @KafkaListener(topics = "product-topic", groupId = "product-group")
     public void consumeEventSave(String message){
+        logger.info("Message arrived in Kafka in Save: {}", message);
         try{
             ProductElasticsearch productElasticsearch = objectMapper.readValue(message, ProductElasticsearch.class);
+            String productName = productElasticsearch.getProductName() != null ? productElasticsearch.getProductName() : "";
+            String description = productElasticsearch.getDescription() != null ? productElasticsearch.getDescription() : "";
+            productElasticsearch.setSuggest(new Completion(new String[]{
+                    productElasticsearch.getProductName(),
+                    productElasticsearch.getDescription()
+            }));
             elasticsearchRepository.save(productElasticsearch);
         }catch (JsonProcessingException e){
             throw new RuntimeException("Error processing message Kafka");
@@ -32,7 +44,7 @@ public class KafkaConsumer {
 
     @KafkaListener(topics = "product-update-topic", groupId = "product-group")
     public void consumeEventUpdate(String message) throws JsonProcessingException{
-        System.out.println("📥 Message arrived in Kafka: " + message);
+        logger.info("Message arrived in Kafka in Update price: {}", message);
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode = objectMapper.readTree(message);
 
@@ -52,6 +64,7 @@ public class KafkaConsumer {
 
     @KafkaListener(topics = "product-update-complete-topic", groupId = "product-group")
     public void consumeEventUpdateComplete(String message) throws  JsonProcessingException{
+        logger.info("Message arrived in Kafka in Update: {}", message);
         try{
             ProductElasticsearch productElasticsearch = objectMapper.readValue(message, ProductElasticsearch.class);
             elasticsearchRepository.save(productElasticsearch);
@@ -63,7 +76,7 @@ public class KafkaConsumer {
 
     @KafkaListener(topics = "product-delete-topic", groupId = "product-group")
     public void consumeEventDelete(String message) throws JsonProcessingException{
-        System.out.println("📥 Message arrived in Kafka: " + message);
+        logger.info("Message arrived in Kafka in Delete: {}", message);
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode = objectMapper.readTree(message);
         String id = jsonNode.get("id").asText();

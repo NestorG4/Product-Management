@@ -18,5 +18,6 @@ public class ProductMysql {
     private String productName;
     private String quality;
     private Double price;
+    private String description;
 
 }

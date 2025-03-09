@@ -3,6 +3,7 @@ package elastisearchProducts.controller;
 import elastisearchProducts.entity.ProductMysql;
 import elastisearchProducts.repository.ProductMysqlRepository;
 import elastisearchProducts.service.ProductService;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
